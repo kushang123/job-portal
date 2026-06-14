@@ -1,4 +1,7 @@
 package com.kushang.jobportal.entity;
 
 public enum JobStatus {
+    OPEN,
+    CLOSED,
+    PAUSED
 }
