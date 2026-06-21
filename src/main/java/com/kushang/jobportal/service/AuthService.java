@@ -10,7 +10,8 @@ import com.kushang.jobportal.dto.LoginRequest;
 import com.kushang.jobportal.entity.Role;
 import com.kushang.jobportal.security.JwtUtil;
 import com.kushang.jobportal.exception.InvalidCredentialsException;
-
+import com.kushang.jobportal.exception.UserAlreadyExistsException;
+import com.kushang.jobportal.exception.AdminRegistrationException;
 
 @Service
 public class AuthService {
@@ -26,11 +27,12 @@ public class AuthService {
 
     public String registerUser(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            return "Email already registered!";
+            throw new UserAlreadyExistsException("Email already registered!");
+
         }
 
         if (request.getRole() == Role.ADMIN) {
-            return "Self-registration as ADMIN is not allowed!";
+            throw new AdminRegistrationException("Self-registration as ADMIN is not allowed!");
         }
 
         User user = new User();

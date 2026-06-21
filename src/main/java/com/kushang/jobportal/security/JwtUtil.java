@@ -12,7 +12,7 @@ import java.util.Date;
 public class JwtUtil {
 
     private static final String SECRET_KEY = "jobportal-secret-key-kushang-2024-secure";
-    private static final long EXPIRATION_TIME = 86400000; // 24 hours in milliseconds
+    private static final long EXPIRATION_TIME = 86400000;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
