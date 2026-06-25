@@ -65,7 +65,6 @@ public class ApplicationService {
         application.setJob(job);
         application.setCandidate(candidate);
         application.setResumeUrl(request.getResumeUrl());
-        // status and appliedAt are set automatically by @PrePersist in the entity
 
         Application saved = applicationRepository.save(application);
 
