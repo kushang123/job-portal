@@ -14,6 +14,4 @@ public class ApplicationRequest {
     @NotNull(message = "Job ID is required")
     private Long jobId;
 
-    @NotBlank(message = "Resume URL is required")
-    private String resumeUrl;
 }

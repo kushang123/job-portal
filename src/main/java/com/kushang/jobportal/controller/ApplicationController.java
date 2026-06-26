@@ -10,6 +10,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.kushang.jobportal.dto.UpdateApplicationStatusRequest;
 import com.kushang.jobportal.dto.CompanyApplicationResponse;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @RestController
@@ -22,10 +24,16 @@ public class ApplicationController {
         this.applicationService = applicationService;
     }
 
-    @PostMapping
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<ApplicationResponse> applyToJob(@Valid @RequestBody ApplicationRequest request) {
-        ApplicationResponse response = applicationService.applyToJob(request);
+    @PostMapping(value = "/apply", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApplicationResponse> applyToJob(
+            @RequestParam("jobId") Long jobId,
+            @RequestParam("resumeFile") MultipartFile resumeFile) {
+
+        ApplicationRequest request = new ApplicationRequest();
+        request.setJobId(jobId);
+
+        ApplicationResponse response = applicationService.applyToJob(request, resumeFile);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 

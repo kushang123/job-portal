@@ -16,6 +16,14 @@ import com.kushang.jobportal.exception.JobNotFoundException;
 import com.kushang.jobportal.repository.ApplicationRepository;
 import com.kushang.jobportal.repository.CompanyRepository;
 import com.kushang.jobportal.repository.JobRepository;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.core.sync.RequestBody;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
+import java.io.IOException;
+import java.util.UUID;
+import com.kushang.jobportal.exception.InvalidFileTypeException;
 import com.kushang.jobportal.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -31,14 +39,17 @@ public class ApplicationService {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
+    private final S3Client s3Client;
+
 
     public ApplicationService(ApplicationRepository applicationRepository,
                               JobRepository jobRepository,
-                              UserRepository userRepository, CompanyRepository companyRepository) {
+                              UserRepository userRepository, CompanyRepository companyRepository, S3Client s3Client) {
         this.applicationRepository = applicationRepository;
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
+        this.s3Client = s3Client;
     }
 
     private User getLoggedInCandidate() {
@@ -47,7 +58,12 @@ public class ApplicationService {
                 .orElseThrow(() -> new RuntimeException("Logged in candidate not found")); // mirrors getLoggedInCompany() pattern
     }
 
-    public ApplicationResponse applyToJob(ApplicationRequest request) {
+
+
+    @Value("${aws.s3.bucket-name}")
+    private String bucketName;
+
+    public ApplicationResponse applyToJob(ApplicationRequest request, MultipartFile resumeFile) {
         User candidate = getLoggedInCandidate();
 
         Job job = jobRepository.findById(request.getJobId())
@@ -61,14 +77,43 @@ public class ApplicationService {
             throw new DuplicateApplicationException("You have already applied to this job");
         }
 
+        String resumeUrl = uploadResumeToS3(resumeFile, candidate.getId());
+
         Application application = new Application();
         application.setJob(job);
         application.setCandidate(candidate);
-        application.setResumeUrl(request.getResumeUrl());
+        application.setResumeUrl(resumeUrl);
 
         Application saved = applicationRepository.save(application);
 
         return mapToResponse(saved);
+    }
+
+    private String uploadResumeToS3(MultipartFile file, Long candidateId) {
+        if (file.isEmpty()) {
+            throw new InvalidFileTypeException("Resume file is required");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.equals("application/pdf")) {
+            throw new InvalidFileTypeException("Only PDF files are allowed for resumes");
+        }
+
+        String key = "resumes/" + candidateId + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
+
+        try {
+            PutObjectRequest putRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload resume to S3", e);
+        }
+
+        return "https://" + bucketName + ".s3.amazonaws.com/" + key;
     }
 
     private ApplicationResponse mapToResponse(Application application) {
